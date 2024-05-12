@@ -15,7 +15,7 @@ handle_rom_addr:
   JMP wait_change
 
 addr_has_changed:
-  NOP
+  SET PINDIRS, 0b00000    side 0b000  //data is input
   JMP PIN handle_rom_addr
 
 .wrap_target
@@ -37,7 +37,7 @@ handle_rom_addr:
   JMP wait_change
 
 addr_has_changed:
-  SET PINDIRS, 0b00000    side 0b000  //data is input
+  NOP
   JMP PIN handle_rom_addr
 
 .wrap_target

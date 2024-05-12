@@ -5,6 +5,7 @@
 //  Created by tihmstar on 08.05.24.
 //
 
+#include <stdint.h>
 #include "rom.h"
 
 #include "cartbus.h"
@@ -16,6 +17,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <hardware/dma.h>
+#include <hardware/sync.h>
 
 
 #define ROM_ADDRESS_SPACE 0x1000
@@ -105,6 +107,12 @@ void __no_inline_not_in_flash_func(rom_handler_F8)(void) {
   }
 }
 
+void __no_inline_not_in_flash_func(rom_handler_nobank)(void) {
+  while (true){
+    __wfi();
+  }
+}
+
 int main() {
   // Set system clock speed.
   // 266 MHz (because shilga does this too)
@@ -122,11 +130,21 @@ int main() {
   
   cartbus_setup();
 
-  atari_bootdance(rom_handler_F8);
+
+  if (sizeof(rom_contents) <= ROM_ADDRESS_SPACE){
+    atari_bootdance(rom_handler_nobank);
+  }else{
+    atari_bootdance(rom_handler_F8);
+  }
 
 
-  // atari_boot_nodance(rom_handler_F8);
 
+  // if (sizeof(rom_contents) <= ROM_ADDRESS_SPACE){
+  //   atari_boot_nodance(rom_handler_nobank);
+  // }else{
+  //   atari_boot_nodance(rom_handler_F8);
+  // }
+  
   while (1) {
     tight_loop_contents();
   }
