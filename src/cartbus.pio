@@ -1,0 +1,132 @@
+
+
+.define public PIN_A0          0
+.define public PIN_A12        12
+.define public PIN_D0         15
+.define public PIN_D7         22
+
+
+; Program name --------------------------------------------------------------------------------
+.program cartbus_addr_observer_cpu
+
+handle_rom_addr:
+  PUSH noblock
+  MOV Y, X
+  JMP wait_change
+
+addr_has_changed:
+  NOP
+  JMP PIN handle_rom_addr
+
+.wrap_target
+wait_change:
+  IN PINS, 13
+  IN NULL, 19
+  MOV X, ISR
+  JMP X!=Y addr_has_changed
+.wrap
+
+
+; Program name --------------------------------------------------------------------------------
+.program cartbus_addr_observer_dma
+.side_set 3 optional
+
+handle_rom_addr:
+  PUSH noblock
+  MOV Y, X
+  JMP wait_change
+
+addr_has_changed:
+  SET PINDIRS, 0b00000    side 0b000  //data is input
+  JMP PIN handle_rom_addr
+
+.wrap_target
+wait_change:
+  IN PINS, 12
+  IN NULL, 20
+  MOV X, ISR
+  JMP X!=Y addr_has_changed
+.wrap
+
+
+; Program name --------------------------------------------------------------------------------
+.program cartbus_data_handler
+.side_set 3 optional
+.wrap_target
+  PULL
+  IN PINS, 8
+  PUSH noblock
+  SET PINDIRS, 0b11111    side 0b111  //data is output
+  OUT PINS, 8   //write data to bus
+.wrap
+
+
+% c-sdk {
+static inline void cartbus_addr_observer_dma_program_init(PIO pio, uint sm, uint offset) {
+  pio_sm_config c = cartbus_addr_observer_dma_program_get_default_config(offset);
+
+  pio_sm_set_consecutive_pindirs(pio, sm, PIN_A0, 13, false);  //address is in
+  sm_config_set_in_pins(&c, PIN_A0);
+
+  sm_config_set_jmp_pin(&c, PIN_A12);
+
+  pio_sm_set_set_pins(pio, sm, PIN_D0, 5);  //we to switch data pins
+  sm_config_set_set_pins(&c, PIN_D0, 5);
+
+  pio_sm_set_sideset_pins(pio, sm, PIN_D0+5);
+  sm_config_set_sideset_pins(&c, PIN_D0+5);
+  sm_config_set_sideset(&c, 4, true, true);
+
+  sm_config_set_clkdiv(&c, 1);
+
+  sm_config_set_out_shift(&c, false, false, 32);
+
+  pio_sm_init(pio, sm, offset, &c);
+}
+
+static inline void cartbus_addr_observer_cpu_program_init(PIO pio, uint sm, uint offset) {
+  pio_sm_config c = cartbus_addr_observer_cpu_program_get_default_config(offset);
+
+  pio_sm_set_consecutive_pindirs(pio, sm, PIN_A0, 13, false);  //address is in
+  sm_config_set_in_pins(&c, PIN_A0);
+
+  sm_config_set_jmp_pin(&c, PIN_A12);
+
+  pio_sm_set_set_pins(pio, sm, PIN_D0, 5);  //we to switch data pins
+  sm_config_set_set_pins(&c, PIN_D0, 5);
+
+  pio_sm_set_sideset_pins(pio, sm, PIN_D0+5);
+  sm_config_set_sideset_pins(&c, PIN_D0+5);
+  sm_config_set_sideset(&c, 4, true, true);
+
+  sm_config_set_clkdiv(&c, 1);
+
+  sm_config_set_out_shift(&c, false, false, 32);
+
+  pio_sm_init(pio, sm, offset, &c);
+}
+
+static inline void cartbus_data_handle_program_init(PIO pio, uint sm, uint offset) {
+  pio_sm_config c = cartbus_data_handler_program_get_default_config(offset);
+
+  pio_sm_set_consecutive_pindirs(pio, sm, PIN_D0, 8, false);  //address is in
+  sm_config_set_in_pins(&c, PIN_D0);
+
+  pio_sm_set_consecutive_pindirs(pio, sm, PIN_D0, 8, true); //data is out
+  sm_config_set_out_pins(&c, PIN_D0, 8);
+
+  pio_sm_set_set_pins(pio, sm, PIN_D0, 5);  //we to switch data pins
+  sm_config_set_set_pins(&c, PIN_D0, 5);
+
+  pio_sm_set_sideset_pins(pio, sm, PIN_D0+5);
+  sm_config_set_sideset_pins(&c, PIN_D0+5);
+  sm_config_set_sideset(&c, 4, true, true);
+
+  sm_config_set_clkdiv(&c, 1);
+
+  sm_config_set_in_shift(&c, false, false, 8);
+  sm_config_set_out_shift(&c, false, false, 8);
+
+  pio_sm_init(pio, sm, offset, &c);
+}
+%}
