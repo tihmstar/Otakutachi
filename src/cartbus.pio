@@ -10,6 +10,7 @@
 .program cartbus_addr_observer_cpu
 
 handle_rom_addr:
+  IRQ clear 0
   PUSH noblock
   MOV Y, X
   JMP wait_change
@@ -31,21 +32,11 @@ wait_change:
 .program cartbus_addr_observer_dma
 .side_set 3 optional
 
-handle_rom_addr:
-  PUSH noblock
-  MOV Y, X
-  JMP wait_change
-
-addr_has_changed:
-  NOP
-  JMP PIN handle_rom_addr
-
 .wrap_target
-wait_change:
+  IRQ wait 0
   IN PINS, 12
   IN NULL, 20
-  MOV X, ISR
-  JMP X!=Y addr_has_changed
+  PUSH noblock
 .wrap
 
 
