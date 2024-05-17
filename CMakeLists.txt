@@ -42,6 +42,7 @@ add_executable(${PROJECT_NAME}
     src/cartbus.c
     src/msc_disk.cpp
     src/usb_descriptors.c
+    src/EmuFATFS.cpp
     ${SOURCES}
 )
 

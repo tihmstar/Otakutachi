@@ -1,11 +1,34 @@
 
+#include "EmuFATFS.hpp"
+
+
 #include "tusb.h"
+#include "tusb_config.h"
 #include "class/msc/msc.h"
+#include <pico/bootrom.h>
 
 #pragma mark global vars
 static bool ejected = false;
+static bool fatIsInited = false;
+static int gIsIOInProgress = 0;
+
+static tihmstar::EmuFATFS<35,0x400> gEmuFat("OTAKUTACHI",CFG_TUD_MSC_EP_BUFSIZE);
 
 
+void cb_newFile(const char *filename, const char filenameSuffix[3], uint32_t fileSize){
+  if (strncasecmp(filenameSuffix, "UF2",3) == 0){
+    reset_usb_boot(0,0);
+  }
+}
+
+void init_fakefatfs(void){
+  gEmuFat.resetFiles();
+  gEmuFat.registerNewfileCallback(cb_newFile);
+
+  fatIsInited = true;
+}
+
+#pragma mark tusb cb functions
 // Invoked when received SCSI_CMD_INQUIRY
 // Application fill vendor id, product id and revision with string up to 8, 16, 4 characters respectively
 void tud_msc_inquiry_cb(uint8_t lun, uint8_t vendor_id[8], uint8_t product_id[16], uint8_t product_rev[4]){
@@ -32,7 +55,17 @@ bool tud_msc_test_unit_ready_cb(uint8_t lun){
     return false;
   }
 
-  return true;
+  if (!gIsIOInProgress){
+    gIsIOInProgress++;
+
+    if (!fatIsInited){
+      init_fakefatfs();
+    }
+
+    gIsIOInProgress--;
+  }
+  
+  return fatIsInited;
 }
 
 // Invoked when received SCSI_CMD_READ_CAPACITY_10 and SCSI_CMD_READ_FORMAT_CAPACITY to determine the disk size
@@ -41,10 +74,8 @@ void tud_msc_capacity_cb(uint8_t lun, uint32_t* block_count, uint16_t* block_siz
 {
   (void) lun;
 
-  // *block_count = gEmuFat.diskBlockNum();
-  // *block_size  = gEmuFat.diskBlockSize();
-  *block_count = 0x100;
-  *block_size  = 0x400;
+  *block_count = gEmuFat.diskBlockNum();
+  *block_size  = gEmuFat.diskBlockSize();
 }
 
 
@@ -75,8 +106,14 @@ bool tud_msc_start_stop_cb(uint8_t lun, uint8_t power_condition, bool start, boo
 int32_t tud_msc_read10_cb(uint8_t lun, uint32_t lba, uint32_t offset, void* buffer, uint32_t bufsize){
   (void) lun;
 
-  memset(buffer, 0x00, bufsize);
-  return bufsize;
+  int32_t didread = 0;
+  if (!gIsIOInProgress){
+    gIsIOInProgress++;
+    didread =  gEmuFat.hostRead(offset + lba * gEmuFat.diskBlockSize(), buffer, bufsize);
+    gIsIOInProgress--;
+  }
+
+  return didread & ~(gEmuFat.diskBlockSize()-1);
 }
 
 bool tud_msc_is_writable_cb (uint8_t lun) {
@@ -89,7 +126,14 @@ bool tud_msc_is_writable_cb (uint8_t lun) {
 int32_t tud_msc_write10_cb(uint8_t lun, uint32_t lba, uint32_t offset, uint8_t* buffer, uint32_t bufsize){
   (void) lun;
 
-  return bufsize;
+  int32_t didWrite = 0;
+  if (!gIsIOInProgress){
+    gIsIOInProgress++;
+    didWrite = gEmuFat.hostWrite(offset + lba * gEmuFat.diskBlockSize(), buffer, bufsize);
+    gIsIOInProgress--;
+  }
+
+  return didWrite & ~(gEmuFat.diskBlockSize()-1);
 }
 
 // Callback invoked when received an SCSI command not in built-in list below

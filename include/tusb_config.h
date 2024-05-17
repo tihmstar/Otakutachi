@@ -101,7 +101,7 @@
 #define CFG_TUD_MIDI              0
 #define CFG_TUD_VENDOR            0
 
-#define CFG_TUD_MSC_EP_BUFSIZE    1024
+#define CFG_TUD_MSC_EP_BUFSIZE    0x400
 
 #ifdef __cplusplus
  }
