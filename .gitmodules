@@ -1,3 +1,6 @@
 [submodule "external/EmuFATFS"]
 	path = external/EmuFATFS
 	url = https://github.com/tihmstar/EmuFATFS
+[submodule "external/littlefs"]
+	path = external/littlefs
+	url = https://github.com/littlefs-project/littlefs

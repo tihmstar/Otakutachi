@@ -42,7 +42,10 @@ add_executable(${PROJECT_NAME}
     src/cartbus.c
     src/msc_disk.cpp
     src/usb_descriptors.c
+    src/lfs_hal.c
     src/EmuFATFS.cpp
+    src/lfs.c
+    src/lfs_util.c
     ${SOURCES}
 )
 
@@ -58,6 +61,7 @@ pico_add_extra_outputs(${PROJECT_NAME})
 # Link to pico_stdlib (gpio, time, etc. functions)
 target_link_libraries(${PROJECT_NAME} 
     pico_stdlib
+    hardware_flash
     hardware_pio
     hardware_dma
     tinyusb_device

@@ -9,7 +9,9 @@
 #include "rom.h"
 
 #include "cartbus.h"
+#include "lfs_hal.h"
 
+#include "lfs.h"
 #include "pico/stdlib.h"
 #include "hardware/clocks.h"
 #include "hardware/vreg.h"
@@ -25,6 +27,7 @@
 #define ROM_OFFSET_MASK    0xfff
 
 static uint8_t atari_cart[0x10000+ROM_ADDRESS_SPACE] __attribute__ ((aligned(0x10000))); //64K ought to be enough for anybody
+static lfs_t gLFS = {};
 
 void __no_inline_not_in_flash_func(atari_bootdance)(void (*rom_handler_func)(void)) {
   uint8_t *bootdance_rom = &atari_cart[sizeof(atari_cart)-ROM_ADDRESS_SPACE];
@@ -114,6 +117,15 @@ void __no_inline_not_in_flash_func(rom_handler_nobank)(void) {
   }
 }
 
+void spinerror(){
+  while (true){
+    gpio_put(25, 0);
+    sleep_ms(1000);
+    gpio_put(25, 1);
+    sleep_ms(1000);
+  }
+}
+
 int main() {
   // Set system clock speed.
   // 266 MHz (because shilga does this too)
@@ -122,8 +134,16 @@ int main() {
 
   gpio_init(25);
   gpio_set_dir(25, GPIO_OUT);
-  gpio_put(25, 1);
+  gpio_put(25, 0);
 
+  {
+    int lfs_err = lfs_mount(&gLFS, &gLFS_pico_cfg);
+    if (lfs_err != LFS_ERR_OK) {
+      lfs_format(&gLFS, &gLFS_pico_cfg);
+      lfs_err = lfs_mount(&gLFS, &gLFS_pico_cfg);
+      if (lfs_err != LFS_ERR_OK) spinerror();
+    }
+  }
 
   //usb stuff
   tusb_init();
@@ -133,6 +153,9 @@ int main() {
   }
 
 
+
+
+  gpio_put(25, 1);
 
   //atari stuff
   memcpy(atari_cart, rom_contents, sizeof(rom_contents));
