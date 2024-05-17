@@ -30,16 +30,18 @@ configure_file(include/BuildVersion.h.in include/BuildVersion.h)
 # Creates a pico-sdk subdirectory in our project for the libraries
 pico_sdk_init()
 
-# set(PICO_TINYUSB_PATH ${PICO_SDK_PATH}/lib/tinyusb)
+set(PICO_TINYUSB_PATH ${PICO_SDK_PATH}/lib/tinyusb)
 
-# # Tell CMake where to find the executable source file
-# file(GLOB_RECURSE SOURCES RELATIVE ${CMAKE_SOURCE_DIR} ${PICO_TINYUSB_PATH}/src)
+# Tell CMake where to find the executable source file
+file(GLOB_RECURSE SOURCES RELATIVE ${CMAKE_SOURCE_DIR} ${PICO_TINYUSB_PATH}/src)
 
 add_subdirectory(libs/git-commit-tracking)
 
 add_executable(${PROJECT_NAME} 
     src/main.c
     src/cartbus.c
+    src/msc_disk.cpp
+    src/usb_descriptors.c
     ${SOURCES}
 )
 
@@ -57,6 +59,8 @@ target_link_libraries(${PROJECT_NAME}
     pico_stdlib
     hardware_pio
     hardware_dma
+    tinyusb_device
+    tinyusb_board
     cmake_git_commit_tracking
 )
 

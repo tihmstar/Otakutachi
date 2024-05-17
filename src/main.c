@@ -18,6 +18,7 @@
 #include <stdio.h>
 #include <hardware/dma.h>
 #include <hardware/sync.h>
+#include <tusb.h>
 
 
 #define ROM_ADDRESS_SPACE 0x1000
@@ -123,6 +124,17 @@ int main() {
   gpio_set_dir(25, GPIO_OUT);
   gpio_put(25, 1);
 
+
+  //usb stuff
+  tusb_init();
+
+  while (1){
+    tud_task(); // tinyusb device task
+  }
+
+
+
+  //atari stuff
   memcpy(atari_cart, rom_contents, sizeof(rom_contents));
   if (sizeof(rom_contents) < ROM_ADDRESS_SPACE){
     memcpy(atari_cart+ROM_ADDRESS_SPACE-sizeof(rom_contents), rom_contents, sizeof(rom_contents));
@@ -136,8 +148,6 @@ int main() {
   }else{
     atari_bootdance(rom_handler_F8);
   }
-
-
 
   // if (sizeof(rom_contents) <= ROM_ADDRESS_SPACE){
   //   atari_boot_nodance(rom_handler_nobank);
