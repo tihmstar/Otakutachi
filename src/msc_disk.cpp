@@ -1,11 +1,14 @@
 
 #include "EmuFATFS.hpp"
-
+#include "all.h"
 
 #include "tusb.h"
 #include "tusb_config.h"
 #include "class/msc/msc.h"
 #include <pico/bootrom.h>
+#include <lfs.h>
+
+extern lfs_t gLFS;
 
 #pragma mark global vars
 static bool ejected = false;
@@ -15,15 +18,51 @@ static int gIsIOInProgress = 0;
 static tihmstar::EmuFATFS<35,0x400> gEmuFat("OTAKUTACHI",CFG_TUD_MSC_EP_BUFSIZE);
 
 
-void cb_newFile(const char *filename, const char filenameSuffix[3], uint32_t fileSize){
+static void cb_newFile(const char *filename, const char filenameSuffix[3], uint32_t fileSize){
   if (strncasecmp(filenameSuffix, "UF2",3) == 0){
     reset_usb_boot(0,0);
+  }else if (strncasecmp(filenameSuffix, "A26",3) == 0){
+
+    printf("",filename);
   }
+}
+
+static int32_t cb_readLFSFile(uint32_t offset, void *buf, uint32_t size, const char *filename){
+  int32_t ret = 0;
+  int err = 0;
+  int lfs_err = 0;
+  lfs_file_t f = {};
+  lfs_soff_t realOffset = 0;
+
+  cassure((lfs_err = lfs_file_open(&gLFS, &f, filename, LFS_O_RDONLY)) == LFS_ERR_OK);
+  cassure((realOffset = lfs_file_seek(&gLFS, &f, offset, SEEK_SET)) == offset);
+  ret = lfs_file_read(&gLFS, &f, buf, size);
+  lfs_file_close(&gLFS, &f);
+
+error:
+  if (err){
+    return -err;
+  }
+  return ret;
 }
 
 void init_fakefatfs(void){
   gEmuFat.resetFiles();
   gEmuFat.registerNewfileCallback(cb_newFile);
+
+  {
+    int err = 0;
+    int lfs_err = 0;
+    lfs_dir_t dir = {};
+    struct lfs_info lfsInfo = {};
+    cassure((lfs_err = lfs_dir_open(&gLFS, &dir, "/")) == LFS_ERR_OK);
+    while ((lfs_err = lfs_dir_read(&gLFS, &dir, &lfsInfo)) > 0){
+      if (lfsInfo.type == LFS_TYPE_REG) {
+        gEmuFat.addFile(lfsInfo.name, NULL, lfsInfo.size, cb_readLFSFile);
+      }
+    }
+    error:;
+  }
 
   fatIsInited = true;
 }

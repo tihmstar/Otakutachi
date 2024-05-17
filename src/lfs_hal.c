@@ -9,7 +9,7 @@
 #define LFS_CACHE_SIZE (FLASH_SECTOR_SIZE / 4)
 
 
-#define FS_SIZE (1.6 * 1024 * 1024)
+#define FS_SIZE (1.2 * 1024 * 1024)
 #define LOOK_AHEAD_SIZE 32
 
 static uint8_t readBuffer[LFS_CACHE_SIZE];

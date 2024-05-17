@@ -27,7 +27,7 @@
 #define ROM_OFFSET_MASK    0xfff
 
 static uint8_t atari_cart[0x10000+ROM_ADDRESS_SPACE] __attribute__ ((aligned(0x10000))); //64K ought to be enough for anybody
-static lfs_t gLFS = {};
+lfs_t gLFS = {};
 
 void __no_inline_not_in_flash_func(atari_bootdance)(void (*rom_handler_func)(void)) {
   uint8_t *bootdance_rom = &atari_cart[sizeof(atari_cart)-ROM_ADDRESS_SPACE];
@@ -142,6 +142,10 @@ int main() {
       lfs_format(&gLFS, &gLFS_pico_cfg);
       lfs_err = lfs_mount(&gLFS, &gLFS_pico_cfg);
       if (lfs_err != LFS_ERR_OK) spinerror();
+      lfs_file_t f;
+      lfs_file_open(&gLFS, &f, "test.txt", LFS_O_RDWR|LFS_O_CREAT);
+      lfs_file_write(&gLFS, &f, "hello world", sizeof("hello world"));
+      lfs_file_close(&gLFS, &f);
     }
   }
 
