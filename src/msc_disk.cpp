@@ -14,17 +14,50 @@ extern lfs_t gLFS;
 static bool ejected = false;
 static bool fatIsInited = false;
 static int gIsIOInProgress = 0;
+static int gNeedsReinit = false;
 
 static tihmstar::EmuFATFS<35,0x400> gEmuFat("OTAKUTACHI",CFG_TUD_MSC_EP_BUFSIZE);
 
+static int32_t cb_writeLFSFile(uint32_t offset, const void *buf, uint32_t size, const char *filename);
+static int32_t cb_readLFSFile(uint32_t offset, void *buf, uint32_t size, const char *filename);
 
-static void cb_newFile(const char *filename, const char filenameSuffix[3], uint32_t fileSize){
+static void cb_newFile(const char *filename, const char filenameSuffix[3], uint32_t fileSize, uint32_t clusterLocation){
   if (strncasecmp(filenameSuffix, "UF2",3) == 0){
     reset_usb_boot(0,0);
-  }else if (strncasecmp(filenameSuffix, "A26",3) == 0){
-
-    printf("",filename);
   }
+  gEmuFat.addFileDynamic(filename, NULL, fileSize, clusterLocation, cb_readLFSFile, cb_writeLFSFile);
+}
+
+static int32_t cb_writeLFSFile(uint32_t offset, const void *buf, uint32_t size, const char *filename){
+  int32_t ret = 0;
+  int err = 0;
+  lfs_file_t f = {};
+  bool isOpen = false;
+  char fnamebuf[0x103] = {};
+  snprintf(fnamebuf, sizeof(fnamebuf), "/%s",filename);
+
+  size_t flen = strlen(filename);
+
+  if (filename[0] != '.' && flen > 4 && strcasecmp(filename+flen-4,".a26") == 0){
+    if (!buf){
+      lfs_remove(&gLFS,fnamebuf);
+      gNeedsReinit = true;
+    }else{
+      int lfs_err = 0;
+      lfs_soff_t realOffset = 0;
+      cassure((lfs_err = lfs_file_open(&gLFS, &f, fnamebuf, LFS_O_WRONLY | LFS_O_CREAT)) == LFS_ERR_OK);
+      isOpen = true;
+      cassure((realOffset = lfs_file_seek(&gLFS, &f, offset, SEEK_SET)) == offset);
+      ret = lfs_file_write(&gLFS, &f, buf, size);
+    }
+  }
+
+error:;
+  if (isOpen) lfs_file_close(&gLFS, &f);
+  if (err){
+    return -err;
+  }
+  return ret;
 }
 
 static int32_t cb_readLFSFile(uint32_t offset, void *buf, uint32_t size, const char *filename){
@@ -33,13 +66,17 @@ static int32_t cb_readLFSFile(uint32_t offset, void *buf, uint32_t size, const c
   int lfs_err = 0;
   lfs_file_t f = {};
   lfs_soff_t realOffset = 0;
+  bool isOpen = false;
+  char fnamebuf[0x103] = {};
+  snprintf(fnamebuf, sizeof(fnamebuf), "/%s",filename);
 
-  cassure((lfs_err = lfs_file_open(&gLFS, &f, filename, LFS_O_RDONLY)) == LFS_ERR_OK);
+  cassure((lfs_err = lfs_file_open(&gLFS, &f, fnamebuf, LFS_O_RDONLY)) == LFS_ERR_OK);
+  isOpen = true;
   cassure((realOffset = lfs_file_seek(&gLFS, &f, offset, SEEK_SET)) == offset);
   ret = lfs_file_read(&gLFS, &f, buf, size);
-  lfs_file_close(&gLFS, &f);
 
 error:
+  if (isOpen) lfs_file_close(&gLFS, &f);
   if (err){
     return -err;
   }
@@ -54,14 +91,17 @@ void init_fakefatfs(void){
     int err = 0;
     int lfs_err = 0;
     lfs_dir_t dir = {};
+    bool dirIsOpen = false;
     struct lfs_info lfsInfo = {};
     cassure((lfs_err = lfs_dir_open(&gLFS, &dir, "/")) == LFS_ERR_OK);
+    dirIsOpen = true;
     while ((lfs_err = lfs_dir_read(&gLFS, &dir, &lfsInfo)) > 0){
       if (lfsInfo.type == LFS_TYPE_REG) {
-        gEmuFat.addFile(lfsInfo.name, NULL, lfsInfo.size, cb_readLFSFile);
+        gEmuFat.addFile(lfsInfo.name, NULL, lfsInfo.size, cb_readLFSFile, cb_writeLFSFile);
       }
     }
     error:;
+    if (dirIsOpen) lfs_dir_close(&gLFS, &dir);
   }
 
   fatIsInited = true;
@@ -90,6 +130,13 @@ bool tud_msc_test_unit_ready_cb(uint8_t lun){
   // RAM disk is ready until ejected
   if (ejected) {
     // Additional Sense 3A-00 is NOT_FOUND
+    tud_msc_set_sense(lun, SCSI_SENSE_NOT_READY, 0x3a, 0x00);
+    return false;
+  }
+
+  if (gNeedsReinit){
+    gNeedsReinit = false;
+    fatIsInited = false;
     tud_msc_set_sense(lun, SCSI_SENSE_NOT_READY, 0x3a, 0x00);
     return false;
   }

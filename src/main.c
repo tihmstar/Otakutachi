@@ -132,6 +132,9 @@ int main() {
   vreg_set_voltage(VREG_VOLTAGE_1_15);
   set_sys_clock_khz(266000, true); 
 
+  stdio_init_all();
+  printf("--- HELLO FROM OTAKUTACHI ---\n");
+
   gpio_init(25);
   gpio_set_dir(25, GPIO_OUT);
   gpio_put(25, 0);
@@ -142,10 +145,6 @@ int main() {
       lfs_format(&gLFS, &gLFS_pico_cfg);
       lfs_err = lfs_mount(&gLFS, &gLFS_pico_cfg);
       if (lfs_err != LFS_ERR_OK) spinerror();
-      lfs_file_t f;
-      lfs_file_open(&gLFS, &f, "test.txt", LFS_O_RDWR|LFS_O_CREAT);
-      lfs_file_write(&gLFS, &f, "hello world", sizeof("hello world"));
-      lfs_file_close(&gLFS, &f);
     }
   }
 

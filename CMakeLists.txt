@@ -13,7 +13,7 @@ if (NOT DEFINED BUILD_TIME_PROVIDED_VERSION)
     set(BUILD_TIME_PROVIDED_VERSION 255.255.255)
     if (NOT DEFINED BUILD_VERSION_TYPE)
       set(BUILD_VERSION_TYPE U)
-      set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O0 -ggdb")
+      set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O0 -ggdb -DLFS_YES_TRACE")
     endif()
 else ()
   if (NOT DEFINED BUILD_VERSION_TYPE)
@@ -73,4 +73,4 @@ pico_generate_pio_header(${PROJECT_NAME} ${CMAKE_CURRENT_LIST_DIR}/src/cartbus.p
 
 # Enable usb output, disable uart output
 pico_enable_stdio_usb(${PROJECT_NAME} 0)
-pico_enable_stdio_uart(${PROJECT_NAME} 0)
+pico_enable_stdio_uart(${PROJECT_NAME} 1)
