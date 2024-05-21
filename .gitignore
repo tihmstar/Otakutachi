@@ -2,3 +2,5 @@
 .vscode/
 rom.h
 menu/bin
+*.lst
+*.sym

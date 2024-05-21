@@ -18,6 +18,7 @@ static volatile uint32_t _gDMADevNull;
 static int gPioPCAddrObserverDMA = 0;
 static int gPioPCAddrObserverCPU = 0;
 static int gPioPCDataHandler = 0;
+static int gPioPCDataReader = 0;
 
 void cartbus_setup (){
   gDMAChannelCartAddressLoader = dma_claim_unused_channel(true);
@@ -115,10 +116,12 @@ void cartbus_setup (){
   gPioPCAddrObserverDMA = pio_add_program(PIO_CARTBUS, &cartbus_addr_observer_dma_program);
   gPioPCAddrObserverCPU = pio_add_program(PIO_CARTBUS, &cartbus_addr_observer_cpu_program);
   gPioPCDataHandler = pio_add_program(PIO_CARTBUS, &cartbus_data_handler_program);
+  gPioPCDataReader = pio_add_program(PIO_CARTBUS, &cartbus_data_reader_program);
 
   cartbus_addr_observer_dma_program_init(PIO_CARTBUS, SM_BUS_ADDR_OBSERVER_DMA, gPioPCAddrObserverDMA);
   cartbus_addr_observer_cpu_program_init(PIO_CARTBUS, SM_BUS_ADDR_OBSERVER_CPU, gPioPCAddrObserverCPU);
   cartbus_data_handle_program_init(PIO_CARTBUS, SM_BUS_DATA_HANDLER, gPioPCDataHandler);
+  cartbus_data_reader_program_init(PIO_CARTBUS, SM_BUS_DATA_READER, gPioPCDataReader);
 
 }
 
@@ -132,7 +135,7 @@ void cartbus_start(){
 
   pio_set_sm_mask_enabled(
     PIO_CARTBUS,
-    (1 << SM_BUS_ADDR_OBSERVER_DMA) | (1 << SM_BUS_ADDR_OBSERVER_CPU) | (1 << SM_BUS_DATA_HANDLER),
+    (1 << SM_BUS_ADDR_OBSERVER_DMA) | (1 << SM_BUS_ADDR_OBSERVER_CPU) | (1 << SM_BUS_DATA_HANDLER) | (1 << SM_BUS_DATA_READER),
     true
   );
   dma_channel_start(gDMAChannelCartAddressLoader);
@@ -141,14 +144,13 @@ void cartbus_start(){
 void cartbus_stop(){
   pio_set_sm_mask_enabled(
     PIO_CARTBUS,
-    (1 << SM_BUS_ADDR_OBSERVER_DMA) | (1 << SM_BUS_ADDR_OBSERVER_CPU) | (1 << SM_BUS_DATA_HANDLER),
+    (1 << SM_BUS_ADDR_OBSERVER_DMA) | (1 << SM_BUS_ADDR_OBSERVER_CPU) | (1 << SM_BUS_DATA_HANDLER) | (1 << SM_BUS_DATA_READER),
     false
   );
-  dma_channel_abort(gDMAChannelCartAddressLoader);
 }
 
 void cartbus_cleanup(void){
-
+  cartbus_stop();
   for (int i=0; i<4; i++){
     pio_sm_set_enabled(PIO_CARTBUS, i, false);
     pio_sm_clear_fifos(PIO_CARTBUS, i);

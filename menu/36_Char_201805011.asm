@@ -592,7 +592,7 @@ LoopMain:
     bne .skipInc
     BIT inputCache
     bne .skipInc
-    inc SelLineLoc
+    inc SelLineLoc+1
     ora inputCache
     sta inputCache    
 .skipInc
@@ -602,7 +602,7 @@ LoopMain:
     bne .skipDec
     BIT inputCache
     bne .skipDec
-    dec SelLineLoc
+    dec SelLineLoc+1
     ora inputCache
     sta inputCache    
 .skipDec
@@ -610,9 +610,9 @@ LoopMain:
     LDA #%10000000
     BIT INPT4
     bne .skipLaunch
-    lda #74
-    sta SelLineLoc+1
 .launchloop
+    lda #$31
+    sta SelLineLoc+2
     jmp .launchloop
 .skipLaunch
 
@@ -1589,7 +1589,7 @@ DemoTable0:
     .byte _0,_1,_2,_3,_4,_5,_6,_7,_8,_9,_A,_B,_C,_D,_E,_F,_G,_H,_I,_J,_K,_L,_M,_N,_O,_P,_Q,_R,_S,_T,_U,_V,_W,_X,_Y,_Z
 
 DemoTable1:
-    .byte _L,_I,_N, _E, _SPACE, _2, _SPACE, _C,_H,_A,_R,_A,_C,_T,_E,_R, _SPACE, _D,_E,_M,_O, _SPACE, _B,_Y, _SPACE, _O,_M,_E,_G,_A,_M,_A,_T,_R,_I,_X
+    .byte _SPACE,_SPACE,_SPACE, _SPACE, _SPACE, _2, _SPACE, _C,_H,_A,_R,_A,_C,_T,_E,_R, _SPACE, _D,_E,_M,_O, _SPACE, _B,_Y, _SPACE, _O,_M,_E,_G,_A,_M,_A,_T,_R,_I,_X
 
 DemoTable2:
     .byte _L,_I,_N, _E, _SPACE, _3, _SPACE, _C,_H,_A,_R,_A,_C,_T,_E,_R, _SPACE, _D,_E,_M,_O, _SPACE, _B,_Y, _SPACE, _O,_M,_E,_G,_A,_M,_A,_T,_R,_I,_X

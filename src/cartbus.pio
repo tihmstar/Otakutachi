@@ -8,15 +8,17 @@
 
 ; Program name --------------------------------------------------------------------------------
 .program cartbus_addr_observer_cpu
+.side_set 3 optional
 
 handle_rom_addr:
   IRQ clear 0
   PUSH noblock
-  MOV Y, X
   JMP wait_change
 
 addr_has_changed:
   SET PINDIRS, 0b00000    side 0b000  //data is input
+  IRQ clear 1
+  MOV Y, X
   JMP PIN handle_rom_addr
 
 .wrap_target
@@ -30,7 +32,6 @@ wait_change:
 
 ; Program name --------------------------------------------------------------------------------
 .program cartbus_addr_observer_dma
-.side_set 3 optional
 
 .wrap_target
   IRQ wait 0
@@ -45,10 +46,16 @@ wait_change:
 .side_set 3 optional
 .wrap_target
   PULL
-  IN PINS, 8
-  PUSH noblock
   SET PINDIRS, 0b11111    side 0b111  //data is output
   OUT PINS, 8   //write data to bus
+.wrap
+
+; Program name --------------------------------------------------------------------------------
+.program cartbus_data_reader
+.wrap_target
+  IRQ wait 1
+  IN PINS, 8
+  PUSH noblock
 .wrap
 
 
@@ -60,13 +67,6 @@ static inline void cartbus_addr_observer_dma_program_init(PIO pio, uint sm, uint
   sm_config_set_in_pins(&c, PIN_A0);
 
   sm_config_set_jmp_pin(&c, PIN_A12);
-
-  pio_sm_set_set_pins(pio, sm, PIN_D0, 5);  //we to switch data pins
-  sm_config_set_set_pins(&c, PIN_D0, 5);
-
-  pio_sm_set_sideset_pins(pio, sm, PIN_D0+5);
-  sm_config_set_sideset_pins(&c, PIN_D0+5);
-  sm_config_set_sideset(&c, 4, true, true);
 
   sm_config_set_clkdiv(&c, 1);
 
@@ -100,11 +100,11 @@ static inline void cartbus_addr_observer_cpu_program_init(PIO pio, uint sm, uint
 static inline void cartbus_data_handle_program_init(PIO pio, uint sm, uint offset) {
   pio_sm_config c = cartbus_data_handler_program_get_default_config(offset);
 
-  pio_sm_set_consecutive_pindirs(pio, sm, PIN_D0, 8, false);  //address is in
-  sm_config_set_in_pins(&c, PIN_D0);
-
   pio_sm_set_consecutive_pindirs(pio, sm, PIN_D0, 8, true); //data is out
   sm_config_set_out_pins(&c, PIN_D0, 8);
+
+  pio_sm_set_consecutive_pindirs(pio, sm, PIN_D0, 8, false);  //data is in
+  sm_config_set_in_pins(&c, PIN_D0);
 
   pio_sm_set_set_pins(pio, sm, PIN_D0, 5);  //we to switch data pins
   sm_config_set_set_pins(&c, PIN_D0, 5);
@@ -112,6 +112,20 @@ static inline void cartbus_data_handle_program_init(PIO pio, uint sm, uint offse
   pio_sm_set_sideset_pins(pio, sm, PIN_D0+5);
   sm_config_set_sideset_pins(&c, PIN_D0+5);
   sm_config_set_sideset(&c, 4, true, true);
+
+  sm_config_set_clkdiv(&c, 1);
+
+  sm_config_set_in_shift(&c, false, false, 8);
+  sm_config_set_out_shift(&c, false, false, 8);
+
+  pio_sm_init(pio, sm, offset, &c);
+}
+
+static inline void cartbus_data_reader_program_init(PIO pio, uint sm, uint offset) {
+  pio_sm_config c = cartbus_data_reader_program_get_default_config(offset);
+
+  pio_sm_set_consecutive_pindirs(pio, sm, PIN_D0, 8, false);  //data is in
+  sm_config_set_in_pins(&c, PIN_D0);
 
   sm_config_set_clkdiv(&c, 1);
 

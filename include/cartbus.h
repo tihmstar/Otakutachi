@@ -14,6 +14,7 @@ extern "C" {
 #define SM_BUS_ADDR_OBSERVER_DMA 0
 #define SM_BUS_ADDR_OBSERVER_CPU 1
 #define SM_BUS_DATA_HANDLER 2
+#define SM_BUS_DATA_READER 3
 
 
 extern volatile uint32_t gCartbusBlockAddress;
@@ -24,17 +25,17 @@ void cartbus_stop();
 void cartbus_cleanup(void);
 
 static inline uint16_t cartbus_readAddr_blocking(void){
-  // uint16_t ret;
-  // while ((PIO_CARTBUS->fstat & (1u << (PIO_FSTAT_RXEMPTY_LSB + SM_BUS_ADDR_OBSERVER_CPU))) != 0) tight_loop_contents();
-  // do{
-  //   ret = PIO_CARTBUS->rxf[SM_BUS_ADDR_OBSERVER_CPU];
-  // } while ((PIO_CARTBUS->fstat & (1u << (PIO_FSTAT_RXEMPTY_LSB + SM_BUS_ADDR_OBSERVER_CPU))) == 0);
-  // return ret;
   return pio_sm_get_blocking(PIO_CARTBUS, SM_BUS_ADDR_OBSERVER_CPU);
 }
 
-static inline uint8_t cartbus_readData_blocking(void){
-  return pio_sm_get_blocking(PIO_CARTBUS, SM_BUS_DATA_HANDLER);
+static inline uint32_t cartbus_readData_blocking(void){
+  // uint32_t ret;
+  // while ((PIO_CARTBUS->fstat & (1u << (PIO_FSTAT_RXEMPTY_LSB + SM_BUS_DATA_HANDLER))) != 0) tight_loop_contents();
+  // do{
+  //   ret = PIO_CARTBUS->rxf[SM_BUS_DATA_HANDLER];
+  // } while ((PIO_CARTBUS->fstat & (1u << (PIO_FSTAT_RXEMPTY_LSB + SM_BUS_DATA_HANDLER))) == 0);
+  // return ret;
+  return pio_sm_get_blocking(PIO_CARTBUS, SM_BUS_DATA_READER);
 }
 
 static inline void setCarbusBlockAddress(const void *addr){
