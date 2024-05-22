@@ -1,6 +1,6 @@
 ; --- Original Code ---
 ; 36 character demo
-; By Omegamatrix
+; By Omegamatrix (https://forums.atariage.com/topic/278667-36-character-demo/)
 ; last update May 11, 2018
 ; --- Modified ---
 ; rom loader menu
